@@ -230,7 +230,6 @@ public class RealizarSimulacion implements IRealizarSimulacion {
         // de descuento sobre la prima
         if (hayPromocionDescuento(promociones)) {
             hmSimulacion.put(StaticVarsContratacion.PAGO_TOTAL, precioConPromocion);
-            hmSimulacion.put(StaticVarsContratacion.PRECIOS_SIN_PROMOCION_SIMULACION, pagoTotal);
         }
         return hmSimulacion;
     }
