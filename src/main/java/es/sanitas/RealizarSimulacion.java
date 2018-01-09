@@ -6,8 +6,6 @@ import es.sanitas.bravo.ws.stubs.contratacionws.documentacion.Primas;
 import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.*;
 import es.sanitas.soporte.*;
 import es.sanitas.soporte.Recibo;
-import org.apache.commons.collections4.IterableUtils;
-import org.apache.commons.collections4.Predicate;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,7 +93,7 @@ public class RealizarSimulacion implements IRealizarSimulacion {
         for (int i = 0; i < n; ++i) {
             try {
                 final Future<TarificacionPoliza> future = ecs.poll(TIMEOUT, TimeUnit.SECONDS);
-                if (future != null) {
+                if (future != null && future.get() != null && future.get().getTarificacion() != null) {
                     resultadoSimulaciones.add(future.get());
                 } else {
                     LOG.error("La llamada asincrona al servicio de simulacion ha fallado por timeout");
@@ -113,17 +111,13 @@ public class RealizarSimulacion implements IRealizarSimulacion {
         }
 
         for (final FrecuenciaEnum frecuencia : frecuenciasTarificar) {
-            final TarificacionPoliza retornoPoliza = IterableUtils.find(resultadoSimulaciones,
-                    new Predicate<TarificacionPoliza>() {
-
-                        public boolean evaluate(final TarificacionPoliza object) {
-                            return object != null && object.getTarificacion() != null;
-                        }
-                    });
-
-            if (retornoPoliza == null) {
+            if (resultadoSimulaciones.isEmpty()) {
                 throw new ExcepcionContratacion("No se ha podido obtener un precio para el presupuesto. Por favor, inténtelo de nuevo más tarde.");
             }
+
+            final TarificacionPoliza retornoPoliza = resultadoSimulaciones.get(0);
+
+
             final Tarificacion retorno = retornoPoliza.getTarificacion();
             final String codigoError = retornoPoliza.getCodigoError();
             if (codigoError != null && !StringUtils.isEmpty(codigoError)) {
