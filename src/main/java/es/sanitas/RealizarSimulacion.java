@@ -27,7 +27,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 
-public class RealizarSimulacion {
+public class RealizarSimulacion implements IRealizarSimulacion {
 
     private static final String LINE_BREAK = "<br/>";
     private static final String DATE_FORMAT = "dd/MM/yyyy";
@@ -55,8 +55,8 @@ public class RealizarSimulacion {
      * @throws Exception             Excepción lanzada en caso de que haya errores
      * @throws ExcepcionContratacion Excepción controlada
      */
-    public Map<String, Object> realizarSimulacion(final DatosAlta oDatosAlta,
-                                                  final List<ProductoPolizas> lProductos, final List<BeneficiarioPolizas> lBeneficiarios,
+    public Map<String, Object> realizarSimulacion(final DatosAlta oDatosAlta, final List<ProductoPolizas> lProductos,
+                                                  final List<BeneficiarioPolizas> lBeneficiarios,
                                                   final boolean desglosar, final Map<String, Object> hmValores)
             throws Exception {
 
