@@ -22,6 +22,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.*;
 import org.apache.commons.collections4.IterableUtils;
 import org.apache.commons.collections4.Predicate;
 import org.apache.commons.lang3.ArrayUtils;
@@ -36,19 +37,6 @@ import es.sanitas.bravo.ws.stubs.contratacionws.consultasoperaciones.DatosCobert
 import es.sanitas.bravo.ws.stubs.contratacionws.consultasoperaciones.DatosContratacionPlan;
 import es.sanitas.bravo.ws.stubs.contratacionws.consultasoperaciones.DatosPlanProducto;
 import es.sanitas.bravo.ws.stubs.contratacionws.documentacion.Primas;
-import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Cobertura;
-import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.InfoContratacion;
-import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.InfoPromociones;
-import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.InfoTier;
-import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Producto;
-import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Promocion;
-import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.ReciboProducto;
-import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Simulacion;
-import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.TarifaBeneficiario;
-import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.TarifaDesglosada;
-import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.TarifaProducto;
-import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Tarificacion;
-import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.TierProducto;
 import es.sanitas.soporte.BeneficiarioPolizas;
 import es.sanitas.soporte.DatosAltaAsegurados;
 import es.sanitas.soporte.DatosAseguradoInclusion;
@@ -124,21 +112,17 @@ public class RealizarSimulacion {
         }
         if (lBeneficiarios != null) {
             frecuenciasTarificar.clear();
-            frecuenciasTarificar
-                    .add(FrecuenciaEnum.obtenerFrecuencia(oDatosAlta.getGenFrecuenciaPago()));
+            frecuenciasTarificar.add(FrecuenciaEnum.obtenerFrecuencia(oDatosAlta.getGenFrecuenciaPago()));
         }
         if (frecuenciasTarificar.isEmpty()) {
             frecuenciasTarificar = EnumSet.allOf(FrecuenciaEnum.class);
         }
 
-        final Collection<Callable<TarificacionPoliza>> solvers = new ArrayList<Callable<TarificacionPoliza>>(
-                0);
+        final Collection<Callable<TarificacionPoliza>> solvers = new ArrayList<Callable<TarificacionPoliza>>(0);
         for (final FrecuenciaEnum frecuencia : frecuenciasTarificar) {
-            solvers.add(simularPolizaFrecuencia(hmValores, oDatosAlta, lProductos, lBeneficiarios,
-                    frecuencia));
+            solvers.add(simularPolizaFrecuencia(hmValores, oDatosAlta, lProductos, lBeneficiarios, frecuencia));
         }
-        final CompletionService<TarificacionPoliza> ecs = new ExecutorCompletionService<TarificacionPoliza>(
-                pool);
+        final CompletionService<TarificacionPoliza> ecs = new ExecutorCompletionService<TarificacionPoliza>(pool);
         int n = 0;
         for (final Callable<TarificacionPoliza> s : solvers) {
             try {
@@ -156,8 +140,7 @@ public class RealizarSimulacion {
                 if (future != null) {
                     resultadoSimulaciones.add(future.get());
                 } else {
-                    LOG.error(
-                            "La llamada asincrona al servicio de simulacion ha fallado por timeout");
+                    LOG.error("La llamada asincrona al servicio de simulacion ha fallado por timeout");
                 }
             } catch (final InterruptedException e) {
                 LOG.error("InterruptedException", e);
@@ -168,8 +151,7 @@ public class RealizarSimulacion {
         }
 
         if (!resultadoExcepciones.isEmpty()) {
-            throw new ExcepcionContratacion(
-                    resultadoExcepciones.get(0).getCause().getMessage());
+            throw new ExcepcionContratacion(resultadoExcepciones.get(0).getCause().getMessage());
         }
 
         for (final FrecuenciaEnum frecuencia : frecuenciasTarificar) {
@@ -182,8 +164,7 @@ public class RealizarSimulacion {
                     });
 
             if (retornoPoliza == null) {
-                throw new ExcepcionContratacion(
-                        "No se ha podido obtener un precio para el presupuesto. Por favor, inténtelo de nuevo más tarde.");
+                throw new ExcepcionContratacion("No se ha podido obtener un precio para el presupuesto. Por favor, inténtelo de nuevo más tarde.");
             }
             final Tarificacion retorno = retornoPoliza.getTarificacion();
             final String codigoError = retornoPoliza.getCodigoError();
@@ -243,7 +224,7 @@ public class RealizarSimulacion {
                         // Se calcula el CSS total para poder calcular el precio con promoción
                         css += tarifaDesglosada.getCss();
 
-                        /**
+                        /*
                          * No sumamos tarifaDesglosada.getCss() + tarifaDesglosada.getCssre() porque
                          * la Compensación del Consorcio de Seguros sólo se aplica en la primera
                          * mensualidad. Y queremos mostrar al usuario el precio de todos los meses.
@@ -268,10 +249,8 @@ public class RealizarSimulacion {
                                 primaProducto.setPrima("" + descuento * 2);
                                 break;
                         }
-                        descuentosTotales[frecuencia.getValor() - 1] += tarifaDesglosada
-                                .getDescuento();
-                        pagoTotal[frecuencia.getValor() - 1] += pago
-                                + tarifaDesglosada.getDescuento();
+                        descuentosTotales[frecuencia.getValor() - 1] += tarifaDesglosada.getDescuento();
+                        pagoTotal[frecuencia.getValor() - 1] += pago + tarifaDesglosada.getDescuento();
 
                     }
                     contadorProducto++;
@@ -280,8 +259,7 @@ public class RealizarSimulacion {
             }
 
             // Promociones aplicadas a la simulación
-            promociones.add(recuperarPromocionesAgrupadas(retorno.getPromociones().getListaPromocionesPoliza(),
-                    contadorBeneficiario));
+            promociones.add(recuperarPromocionesAgrupadas(retorno.getPromociones().getListaPromocionesPoliza(), contadorBeneficiario));
 
             // Lista de recibos del primer año
             if (retorno.getRecibos() != null) {
@@ -289,8 +267,7 @@ public class RealizarSimulacion {
 
                 // Se calcula el precio total con promoción
                 // Es el importe del primer recibo sin el impuesto del consorcio
-                precioConPromocion[frecuencia.getValor()
-                        - 1] = retorno.getRecibos().getReciboPoliza().getRecibos()[0].getImporte() - css;
+                precioConPromocion[frecuencia.getValor() - 1] = retorno.getRecibos().getReciboPoliza().getRecibos()[0].getImporte() - css;
             }
         }
 
@@ -342,8 +319,7 @@ public class RealizarSimulacion {
 
         TarificacionPoliza resultado = null;
         final Simulacion in = new Simulacion();
-        final DatosContratacionPlan oDatosPlan = (DatosContratacionPlan) hmValores
-                .get(StaticVarsContratacion.DATOS_PLAN);
+        final DatosContratacionPlan oDatosPlan = (DatosContratacionPlan) hmValores.get(StaticVarsContratacion.DATOS_PLAN);
 
         if (lBeneficiarios != null) {
             in.setOperacion(StaticVarsContratacion.INCLUSION_BENEFICIARIO);
@@ -352,21 +328,18 @@ public class RealizarSimulacion {
         }
         in.setInfoPromociones(obtenerInfoPromociones(oDatosAlta));
         in.setInfoTier(obtenerTier(oDatosAlta));
-        in.setListaBeneficiarios(
-                obtenerBeneficiarios(oDatosAlta, lProductos, lBeneficiarios, oDatosPlan));
-        in.setInfoContratacion(
-                obtenerInfoContratacion(oDatosAlta, lBeneficiarios, lProductos, frecuencia, in.getOperacion()));
+        in.setListaBeneficiarios(obtenerBeneficiarios(oDatosAlta, lProductos, lBeneficiarios, oDatosPlan));
+        in.setInfoContratacion(obtenerInfoContratacion(oDatosAlta, lBeneficiarios, lProductos, frecuencia, in.getOperacion()));
 
-        final RESTResponse<Tarificacion, es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Error> response = servicioSimulacion
-                .simular(in);
+        final RESTResponse<Tarificacion, es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Error> response = servicioSimulacion.simular(in);
         if (!response.hasError() && response.out.getTarifas() != null) {
             resultado = new TarificacionPoliza();
             resultado.setTarificacion(response.out);
 
             // Si se ha introducido un código promocional no válido se repite la simulación sin el
             // código promocional
-        } else if (response.hasError() && StaticVarsContratacion.SIMULACION_ERROR_COD_PROMOCIONAL
-                .equalsIgnoreCase(response.error.getCodigo())) {
+        } else if (response.hasError() &&
+                StaticVarsContratacion.SIMULACION_ERROR_COD_PROMOCIONAL.equalsIgnoreCase(response.error.getCodigo())) {
             if (oDatosAlta instanceof DatosAltaAsegurados) {
                 final DatosAltaAsegurados oDatosAltaAsegurados = (DatosAltaAsegurados) oDatosAlta;
                 oDatosAltaAsegurados.setCodigoPromocional(null);
@@ -403,8 +376,7 @@ public class RealizarSimulacion {
         if (oDatosAlta instanceof DatosAltaAsegurados) {
             final DatosAltaAsegurados oDatosAltaAsegurados = (DatosAltaAsegurados) oDatosAlta;
             infoPromociones = new InfoPromociones();
-            infoPromociones
-                    .setAutomaticas(StaticVarsContratacion.SIMULACION_PROMOCIONES_AUTOMATICAS);
+            infoPromociones.setAutomaticas(StaticVarsContratacion.SIMULACION_PROMOCIONES_AUTOMATICAS);
             // Si no se ha introducido un código promocional se debe enviar
             // de cero elementos
             Promocion[] promociones = new Promocion[0];
@@ -450,8 +422,7 @@ public class RealizarSimulacion {
                                                        final List<ProductoPolizas> lProductos, final FrecuenciaEnum frecuencia, final Integer tipoOperacion) {
         final InfoContratacion infoContratacion = new InfoContratacion();
 
-        infoContratacion.setCodigoPostal(String.format("%05d",
-                ((DatosDomicilio) oDatosAlta.getDomicilios().get(0)).getCodPostal()));
+        infoContratacion.setCodigoPostal(String.format("%05d", ((DatosDomicilio) oDatosAlta.getDomicilios().get(0)).getCodPostal()));
         infoContratacion.setFechaEfecto(oDatosAlta.getFAlta());
         infoContratacion.setFrecuenciaPago(frecuencia.getValor());
 
@@ -495,26 +466,22 @@ public class RealizarSimulacion {
     protected es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Beneficiario[] obtenerBeneficiarios(
             final DatosAlta oDatosAlta, final List<ProductoPolizas> lProductos,
             final List<BeneficiarioPolizas> lBeneficiarios, final DatosContratacionPlan oDatosPlan) {
-        final List<es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Beneficiario> beneficiarios = new ArrayList<es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Beneficiario>();
+        final List<Beneficiario> beneficiarios = new ArrayList<es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Beneficiario>();
 
         // Si hay lista de beneficiarios se trata de una inclusion de beneficiarios
         if (lBeneficiarios != null && lBeneficiarios.size() > 0) {
             for (final BeneficiarioPolizas oBeneficiario : lBeneficiarios) {
                 final es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Beneficiario beneficiario = new es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Beneficiario();
-                beneficiario.setFechaNacimiento(
-                        cambiarFecha(oBeneficiario.getDatosPersonales().getFNacimiento(),
-                                oDatosAlta.getFAlta()));
+                beneficiario.setFechaNacimiento(cambiarFecha(oBeneficiario.getDatosPersonales().getFNacimiento(), oDatosAlta.getFAlta()));
                 beneficiario.setParentesco(11);
                 beneficiario.setSexo(oBeneficiario.getDatosPersonales().getGenSexo());
                 if (oBeneficiario.getDatosPersonales().getIdProfesion() > 0) {
-                    beneficiario
-                            .setIdProfesion(oBeneficiario.getDatosPersonales().getIdProfesion());
+                    beneficiario.setIdProfesion(oBeneficiario.getDatosPersonales().getIdProfesion());
                 } else {
                     beneficiario.setIdProfesion(1);
                 }
                 beneficiario.setNombre(oBeneficiario.getDatosPersonales().getNombre());
-                final Producto[] productos = obtenerProductosAsegurado(
-                        oDatosAlta.getTitular().getProductosContratados(), oDatosPlan);
+                final Producto[] productos = obtenerProductosAsegurado(oDatosAlta.getTitular().getProductosContratados(), oDatosPlan);
                 beneficiario.setListaProductos(productos);
                 /*
                  * String tarjeta = oBeneficiario.getSNumTarjetaSanitas(); if( !StringUtils.isEmpty(
@@ -526,19 +493,15 @@ public class RealizarSimulacion {
         } else {
             // Si no hay lista de beneficiarios se trata de un alta
             // Primero se procesa el titular
-            es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Beneficiario beneficiario = new es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Beneficiario();
+            Beneficiario beneficiario = new Beneficiario();
 
-            beneficiario.setFechaNacimiento(
-                    cambiarFecha(oDatosAlta.getTitular().getDatosPersonales().getFNacimiento(),
-                            oDatosAlta.getFAlta()));
+            beneficiario.setFechaNacimiento(cambiarFecha(oDatosAlta.getTitular().getDatosPersonales().getFNacimiento(), oDatosAlta.getFAlta()));
             beneficiario.setParentesco(1);
             // aunque se permite el genero 3 cuando no hay uno definido no podemos usarlo.
             // Así que enviamos un 2 (por temas de ginecologia tambien).
-            beneficiario.setSexo(oDatosAlta.getTitular().getDatosPersonales().getGenSexo() == 0 ? 2
-                    : oDatosAlta.getTitular().getDatosPersonales().getGenSexo());
+            beneficiario.setSexo(oDatosAlta.getTitular().getDatosPersonales().getGenSexo() == 0 ? 2 : oDatosAlta.getTitular().getDatosPersonales().getGenSexo());
             beneficiario.setIdProfesion(1);
-            beneficiario.setNombre(
-                    String.valueOf(oDatosAlta.getTitular().getDatosPersonales().getNombre()));
+            beneficiario.setNombre(String.valueOf(oDatosAlta.getTitular().getDatosPersonales().getNombre()));
             if (oDatosAlta.getTitular() instanceof DatosAseguradoInclusion) {
                 final DatosAseguradoInclusion dai = (DatosAseguradoInclusion) oDatosAlta.getTitular();
                 if (dai.getSIdCliente() != null && dai.getSIdCliente() > 0) {
@@ -547,11 +510,9 @@ public class RealizarSimulacion {
             }
 
             // Si hay lista de productos se incluyen como productos añadidos al alta
-            Producto[] productos = obtenerProductosAsegurado(
-                    oDatosAlta.getTitular().getProductosContratados(), oDatosPlan);
+            Producto[] productos = obtenerProductosAsegurado(oDatosAlta.getTitular().getProductosContratados(), oDatosPlan);
             if (lProductos != null && !lProductos.isEmpty()) {
-                productos = ArrayUtils.addAll(productos,
-                        obtenerProductos(lProductos.get(0).getProductos(), oDatosPlan));
+                productos = ArrayUtils.addAll(productos, obtenerProductos(lProductos.get(0).getProductos(), oDatosPlan));
             }
             beneficiario.setListaProductos(productos);
 
@@ -566,36 +527,28 @@ public class RealizarSimulacion {
 
             // Y luego se procesan el resto de asegurados
             if (oDatosAlta.getAsegurados() != null && oDatosAlta.getAsegurados().size() > 0) {
-                final Iterator<DatosAseguradoInclusion> iteradorAsegurados = oDatosAlta.getAsegurados()
-                        .iterator();
+                final Iterator<DatosAseguradoInclusion> iteradorAsegurados = oDatosAlta.getAsegurados().iterator();
                 int contadorBeneficiario = 1;
                 while (iteradorAsegurados.hasNext()) {
                     final DatosAseguradoInclusion oDatosAsegurado = iteradorAsegurados.next();
 
                     beneficiario = new es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Beneficiario();
 
-                    beneficiario.setFechaNacimiento(
-                            cambiarFecha(oDatosAsegurado.getDatosPersonales().getFNacimiento(),
-                                    oDatosAlta.getFAlta()));
+                    beneficiario.setFechaNacimiento(cambiarFecha(oDatosAsegurado.getDatosPersonales().getFNacimiento(), oDatosAlta.getFAlta()));
                     beneficiario.setParentesco(11);
                     // Bravo son unos tocapelotas y aunque permiten el genero 3 cuando no hay uno
                     // definido no podemos usarlo.
                     // Así que enviamos un 2 (por temas de ginecologia tambien).
-                    beneficiario.setSexo(oDatosAsegurado.getDatosPersonales().getGenSexo() == 0 ? 2
-                            : oDatosAsegurado.getDatosPersonales().getGenSexo());
+                    beneficiario.setSexo(oDatosAsegurado.getDatosPersonales().getGenSexo() == 0 ? 2 : oDatosAsegurado.getDatosPersonales().getGenSexo());
                     beneficiario.setNombre(oDatosAsegurado.getDatosPersonales().getNombre());
                     beneficiario.setIdProfesion(1);
                     if (oDatosAsegurado.getSIdCliente() != null) {
                         beneficiario.setIdCliente(oDatosAsegurado.getSIdCliente().intValue());
                     }
 
-                    productos = obtenerProductosAsegurado(
-                            oDatosAsegurado.getProductosContratados(), oDatosPlan);
+                    productos = obtenerProductosAsegurado(oDatosAsegurado.getProductosContratados(), oDatosPlan);
                     if (lProductos != null && !lProductos.isEmpty()) {
-                        productos = ArrayUtils.addAll(productos,
-                                obtenerProductos(
-                                        lProductos.get(contadorBeneficiario).getProductos(),
-                                        oDatosPlan));
+                        productos = ArrayUtils.addAll(productos, obtenerProductos(lProductos.get(contadorBeneficiario).getProductos(), oDatosPlan));
                     }
                     beneficiario.setListaProductos(productos);
 
@@ -619,16 +572,14 @@ public class RealizarSimulacion {
      * Comprueba si alguna de las promociones aplicadas en la simulación es un descuento en la
      * prima.
      *
-     * @param out simulación múltiple realizada
+     * @param promocionesAplicadas simulación múltiple realizada
      */
-    private boolean hayPromocionDescuento(
-            final List<List<PromocionAplicada>> promocionesAplicadas) {
+    private boolean hayPromocionDescuento(final List<List<PromocionAplicada>> promocionesAplicadas) {
         boolean codigoAplicado = Boolean.FALSE;
         if (promocionesAplicadas != null) {
             for (final List<PromocionAplicada> promociones : promocionesAplicadas) {
                 for (final PromocionAplicada promocion : promociones) {
-                    if (promocion != null && TipoPromocionEnum.DESCUENTO_PORCENTAJE
-                            .equals(promocion.getTipoPromocion())) {
+                    if (promocion != null && TipoPromocionEnum.DESCUENTO_PORCENTAJE.equals(promocion.getTipoPromocion())) {
                         codigoAplicado = Boolean.TRUE;
                     }
                 }
@@ -637,8 +588,7 @@ public class RealizarSimulacion {
         return codigoAplicado;
     }
 
-    private Producto[] obtenerProductos(final List<ProductoCobertura> productosCobertura,
-                                        final DatosContratacionPlan oDatosPlan) {
+    private Producto[] obtenerProductos(final List<ProductoCobertura> productosCobertura, final DatosContratacionPlan oDatosPlan) {
         final List<Producto> productos = new ArrayList<Producto>();
         if (productosCobertura != null && !productosCobertura.isEmpty()) {
             for (final ProductoCobertura producto : productosCobertura) {
@@ -649,8 +599,7 @@ public class RealizarSimulacion {
         return productos.toArray(new Producto[0]);
     }
 
-    private Producto[] obtenerProductosAsegurado(final List<DatosProductoAlta> productosCobertura,
-                                                 final DatosContratacionPlan oDatosPlan) {
+    private Producto[] obtenerProductosAsegurado(final List<DatosProductoAlta> productosCobertura, final DatosContratacionPlan oDatosPlan) {
         final List<Producto> productos = new ArrayList<Producto>();
         if (productosCobertura != null && !productosCobertura.isEmpty()) {
             for (final DatosProductoAlta producto : productosCobertura) {
@@ -661,8 +610,7 @@ public class RealizarSimulacion {
         return productos.toArray(new Producto[0]);
     }
 
-    private Producto obtenerProducto(final DatosProductoAlta productoAlta,
-                                     final DatosContratacionPlan oDatosPlan) {
+    private Producto obtenerProducto(final DatosProductoAlta productoAlta, final DatosContratacionPlan oDatosPlan) {
         final Producto producto = new Producto();
         final int idProducto = productoAlta.getIdProducto();
         producto.setIdProducto(idProducto);
@@ -670,8 +618,7 @@ public class RealizarSimulacion {
         return producto;
     }
 
-    private Producto obtenerProducto(final ProductoCobertura productoCobertura,
-                                     final DatosContratacionPlan oDatosPlan) {
+    private Producto obtenerProducto(final ProductoCobertura productoCobertura, final DatosContratacionPlan oDatosPlan) {
         final Producto producto = new Producto();
         final int idProducto = productoCobertura.getIdProducto();
         producto.setIdProducto(idProducto);
@@ -705,37 +652,12 @@ public class RealizarSimulacion {
         return coberturas.toArray(new Cobertura[0]);
     }
 
-    /*
-     * private Procedencia obtenerProcedencia( List<ProductoPolizas> lProductos ) { Procedencia
-     * procedencia = null; if (lProductos != null && !lProductos.isEmpty()){ procedencia = new
-     * Procedencia(); procedencia.setIdColectivo( ( ( ProductoPolizas )lProductos.get( 0 )
-     * ).getIdColectivo() ); procedencia.setIdPoliza( ( ( ProductoPolizas )lProductos.get( 0 )
-     * ).getIdPoliza().intValue() ); procedencia.setIdCompania( ( ( ProductoPolizas )lProductos.get(
-     * 0 ) ).getIdCompania() ); } return procedencia; } private void obtenerProcedencia(String
-     * tarjeta, DatosPersona datosPersonales,
-     * es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Beneficiario beneficiario){
-     * IRecuperarDatosTarjetaDAO oRecuperarDatosTarj = new RecuperarDatosTarjetaDAO(); try {
-     * @SuppressWarnings( "unchecked" ) Map<String, Object> hmRetorno =
-     * oRecuperarDatosTarj.recuperar( tarjeta ); if( hmRetorno.get( Constantes.COD_CLIENTE ) != null
-     * ) { Procedencia datosProcedencia = new Procedencia(); beneficiario.setIdCliente(
-     * Integer.valueOf( String.valueOf( hmRetorno.get( Constantes.COD_CLIENTE ) ) ) ); PolizaBasico
-     * oPoliza = ( PolizaBasico )hmRetorno.get( Constantes.BEAN_POLIZA );
-     * datosProcedencia.setIdColectivo( Long.valueOf( oPoliza.getNumColectivo() ).intValue() );
-     * datosProcedencia.setIdPoliza( Long.valueOf( oPoliza.getNumPoliza() ).intValue() );
-     * datosProcedencia.setIdCompania( Long.valueOf( oPoliza.getCompania() ).intValue() );
-     * util.datos.Beneficiario benef = ( util.datos.Beneficiario )hmRetorno.get(
-     * Constantes.BENEFICIARIOS ); SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
-     * datosPersonales.setFNacimiento(sdf.format( benef.getFNacimiento() ) );
-     * datosPersonales.setGenSexo( benef.getIdSexo() ); beneficiario.setProcedencia(
-     * datosProcedencia ); } } catch( Exception e ) { LOG.warn(
-     * "No se ha podido recuperar los datos de la tarjeta " + tarjeta, e ); } }
-     */
 
     /**
      * Método que recibe una fecha en formato String. Si la fecha está en formato edad, lo
      * transforma a formato fecha.
      *
-     * @param fecha
+     * @param fecha a cambiar
      * @return la nueva fecha
      **/
     private String cambiarFecha(String fecha, final String fechaAlta) {
@@ -758,7 +680,7 @@ public class RealizarSimulacion {
     }
 
     /**
-     * @param oDatosAlta
+     * @param oDatosAlta datos de alta
      * @return true si el titular o alguno de los asegurados tiene tarjeta de sanitas.
      */
     private boolean hayTarjetas(final DatosAlta oDatosAlta) {
@@ -833,11 +755,9 @@ public class RealizarSimulacion {
         PromocionAplicada promocionParam = null;
         if (promocion != null) {
             promocionParam = new PromocionAplicada();
-            promocionParam.setIdPromocion(promocion.getIdPromocion() != null
-                    ? Long.valueOf(promocion.getIdPromocion()) : null);
+            promocionParam.setIdPromocion(promocion.getIdPromocion() != null ? Long.valueOf(promocion.getIdPromocion()) : null);
             promocionParam.setDescripcion(promocion.getDescripcion());
-            promocionParam.setTipoPromocion(
-                    TipoPromocionEnum.obtenerTipoPromocion(promocion.getTipo()));
+            promocionParam.setTipoPromocion(TipoPromocionEnum.obtenerTipoPromocion(promocion.getTipo()));
         }
         return promocionParam;
     }
