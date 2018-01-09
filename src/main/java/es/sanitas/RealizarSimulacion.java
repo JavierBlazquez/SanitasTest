@@ -178,19 +178,19 @@ public class RealizarSimulacion implements IRealizarSimulacion {
                         switch (frecuencia) {
                             case MENSUAL:
                                 // Mensual
-                                primaProducto.setPrima("" + descuento);
+                                primaProducto.setPrima(Double.toString(descuento));
                                 break;
                             case TRIMESTRAL:
                                 // Trimestral
-                                primaProducto.setPrima("" + descuento);
+                                primaProducto.setPrima(Double.toString(descuento));
                                 break;
                             case SEMESTRAL:
                                 // Semestral
-                                primaProducto.setPrima("" + descuento * 2);
+                                primaProducto.setPrima(Double.toString(descuento * 2));
                                 break;
                             case ANUAL:
                                 // Anual
-                                primaProducto.setPrima("" + descuento * 2);
+                                primaProducto.setPrima(Double.toString(descuento * 2));
                                 break;
                         }
                         descuentosTotales[frecuencia.getValor() - 1] += tarifaDesglosada.getDescuento();
