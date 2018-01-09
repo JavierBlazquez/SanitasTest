@@ -7,6 +7,7 @@ import es.sanitas.bravo.ws.stubs.contratacionws.consultasoperaciones.DatosContra
 import es.sanitas.bravo.ws.stubs.contratacionws.consultasoperaciones.DatosPlanProducto;
 import es.sanitas.bravo.ws.stubs.contratacionws.documentacion.Primas;
 import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.*;
+import es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Error;
 import es.sanitas.soporte.*;
 import es.sanitas.soporte.Recibo;
 import org.apache.commons.collections4.IterableUtils;
@@ -64,6 +65,7 @@ public class RealizarSimulacion implements IRealizarSimulacion {
         @SuppressWarnings("unchecked") final List<String> lExcepciones = (List<String>) hmValores.get("EXCEPCIONES");
         final DatosContratacionPlan oDatosPlan = (DatosContratacionPlan) hmValores.get(StaticVarsContratacion.DATOS_PLAN);
 
+
         final List<Primas> primas = new ArrayList<>();
         final Double descuentosTotales[] = {0.0, 0.0, 0.0, 0.0};
         final Double pagoTotal[] = {0.0, 0.0, 0.0, 0.0};
@@ -75,7 +77,6 @@ public class RealizarSimulacion implements IRealizarSimulacion {
 
         Set<FrecuenciaEnum> frecuenciasTarificar = EnumSet.noneOf(FrecuenciaEnum.class);
         if (hmValores.containsKey(StaticVarsContratacion.FREC_MENSUAL)) {
-            frecuenciasTarificar.clear();
             frecuenciasTarificar.add(FrecuenciaEnum.MENSUAL);
         }
         if (lBeneficiarios != null) {
@@ -88,7 +89,7 @@ public class RealizarSimulacion implements IRealizarSimulacion {
 
         final Collection<Callable<TarificacionPoliza>> solvers = new ArrayList<>(0);
         for (final FrecuenciaEnum frecuencia : frecuenciasTarificar) {
-            solvers.add(simularPolizaFrecuencia(hmValores, oDatosAlta, lProductos, lBeneficiarios, frecuencia));
+            solvers.add(simularPolizaFrecuencia(oDatosPlan, oDatosAlta, lProductos, lBeneficiarios, frecuencia));
         }
         final CompletionService<TarificacionPoliza> ecs = new ExecutorCompletionService<>(pool);
         int n = 0;
@@ -142,8 +143,7 @@ public class RealizarSimulacion implements IRealizarSimulacion {
 
             int contadorBeneficiario = 0;
             double css = 0;
-            for (final TarifaBeneficiario tarifaBeneficiario : retorno.getTarifas()
-                    .getTarifaBeneficiarios()) {
+            for (final TarifaBeneficiario tarifaBeneficiario : retorno.getTarifas().getTarifaBeneficiarios()) {
                 List<PrimasPorProducto> listaProductoPorAseg = new ArrayList<>();
                 if (primasDesglosadas.size() > contadorBeneficiario) {
                     listaProductoPorAseg = primasDesglosadas.get(contadorBeneficiario);
@@ -160,25 +160,20 @@ public class RealizarSimulacion implements IRealizarSimulacion {
                 for (final TarifaProducto tarifaProducto : tarifaBeneficiario.getTarifasProductos()) {
 
                     if ((tarifaProducto.getIdProducto() != 389
-                            || !comprobarExcepcion(lExcepciones,
-                            StaticVarsContratacion.PROMO_ECI_COLECTIVOS)
+                            || !comprobarExcepcion(lExcepciones, StaticVarsContratacion.PROMO_ECI_COLECTIVOS)
                             || hayTarjetas(oDatosAlta)) && tarifaProducto.getIdProducto() != 670
-                            || !comprobarExcepcion(lExcepciones,
-                            StaticVarsContratacion.PROMO_FARMACIA)
+                            || !comprobarExcepcion(lExcepciones, StaticVarsContratacion.PROMO_FARMACIA)
                             || hayTarjetas(oDatosAlta)) {
 
                         PrimasPorProducto oPrimasProducto = new PrimasPorProducto();
                         if (listaProductoPorAseg.size() > contadorProducto) {
                             oPrimasProducto = listaProductoPorAseg.get(contadorProducto);
                         } else {
-                            oPrimasProducto
-                                    .setCodigoProducto(tarifaProducto.getIdProducto().intValue());
+                            oPrimasProducto.setCodigoProducto(tarifaProducto.getIdProducto().intValue());
                             oPrimasProducto.setNombreProducto(tarifaProducto.getDescripcion());
-                            final DatosPlanProducto producto = getDatosProducto(oDatosPlan,
-                                    tarifaProducto.getIdProducto());
+                            final DatosPlanProducto producto = getDatosProducto(oDatosPlan, tarifaProducto.getIdProducto());
                             if (producto != null) {
-                                oPrimasProducto
-                                        .setObligatorio(producto.isSwObligatorio() ? "S" : "N");
+                                oPrimasProducto.setObligatorio(producto.isSwObligatorio() ? "S" : "N");
                                 oPrimasProducto.setNombreProducto(producto.getDescComercial());
                             }
                             listaProductoPorAseg.add(oPrimasProducto);
@@ -197,20 +192,20 @@ public class RealizarSimulacion implements IRealizarSimulacion {
                          */
                         final double pago = tarifaDesglosada.getPrima() + tarifaDesglosada.getISPrima();
                         final double descuento = tarifaDesglosada.getDescuento();
-                        switch (frecuencia.getValor()) {
-                            case 1:
+                        switch (frecuencia) {
+                            case MENSUAL:
                                 // Mensual
                                 primaProducto.setPrima("" + descuento);
                                 break;
-                            case 2:
+                            case TRIMESTRAL:
                                 // Trimestral
                                 primaProducto.setPrima("" + descuento);
                                 break;
-                            case 3:
+                            case SEMESTRAL:
                                 // Semestral
                                 primaProducto.setPrima("" + descuento * 2);
                                 break;
-                            case 4:
+                            case ANUAL:
                                 // Anual
                                 primaProducto.setPrima("" + descuento * 2);
                                 break;
@@ -258,19 +253,17 @@ public class RealizarSimulacion implements IRealizarSimulacion {
     }
 
     private Callable<TarificacionPoliza> simularPolizaFrecuencia(
-            final Map<String, Object> hmValores, final DatosAlta oDatosAlta,
-            final List<ProductoPolizas> lProductos,
+            final DatosContratacionPlan oDatosPlan, final DatosAlta oDatosAlta, final List<ProductoPolizas> lProductos,
             final List<BeneficiarioPolizas> lBeneficiarios, final FrecuenciaEnum frecuencia) {
         return new Callable<TarificacionPoliza>() {
 
             public TarificacionPoliza call() throws ExcepcionContratacion {
-                return simular(hmValores, oDatosAlta, lProductos, lBeneficiarios, frecuencia);
+                return simular(oDatosPlan, oDatosAlta, lProductos, lBeneficiarios, frecuencia);
             }
         };
     }
 
-    private DatosPlanProducto getDatosProducto(final DatosContratacionPlan oDatosPlan,
-                                               final long idProducto) {
+    private DatosPlanProducto getDatosProducto(final DatosContratacionPlan oDatosPlan, final long idProducto) {
         for (final DatosPlanProducto producto : oDatosPlan.getProductos()) {
             if (producto.getIdProducto() == idProducto) {
                 return producto;
@@ -279,13 +272,12 @@ public class RealizarSimulacion implements IRealizarSimulacion {
         return null;
     }
 
-    private TarificacionPoliza simular(final Map<String, Object> hmValores, final DatosAlta oDatosAlta,
+    private TarificacionPoliza simular(final DatosContratacionPlan oDatosPlan, final DatosAlta oDatosAlta,
                                        final List<ProductoPolizas> lProductos, final List<BeneficiarioPolizas> lBeneficiarios,
                                        final FrecuenciaEnum frecuencia) throws ExcepcionContratacion {
 
         TarificacionPoliza resultado;
         final Simulacion in = new Simulacion();
-        final DatosContratacionPlan oDatosPlan = (DatosContratacionPlan) hmValores.get(StaticVarsContratacion.DATOS_PLAN);
 
         if (lBeneficiarios != null) {
             in.setOperacion(StaticVarsContratacion.INCLUSION_BENEFICIARIO);
@@ -297,32 +289,37 @@ public class RealizarSimulacion implements IRealizarSimulacion {
         in.setListaBeneficiarios(obtenerBeneficiarios(oDatosAlta, lProductos, lBeneficiarios, oDatosPlan));
         in.setInfoContratacion(obtenerInfoContratacion(oDatosAlta, frecuencia, in.getOperacion()));
 
-        final RESTResponse<Tarificacion, es.sanitas.seg.simulacionpoliza.services.api.simulacion.vo.Error> response = servicioSimulacion.simular(in);
+        final RESTResponse<Tarificacion, Error> response = servicioSimulacion.simular(in);
         if (!response.hasError() && response.out.getTarifas() != null) {
             resultado = new TarificacionPoliza();
             resultado.setTarificacion(response.out);
 
             // Si se ha introducido un código promocional no válido se repite la simulación sin el
             // código promocional
-        } else if (response.hasError() &&
-                StaticVarsContratacion.SIMULACION_ERROR_COD_PROMOCIONAL.equalsIgnoreCase(response.error.getCodigo())) {
+        } else if (response.hasError() && StaticVarsContratacion.SIMULACION_ERROR_COD_PROMOCIONAL.equalsIgnoreCase(response.error.getCodigo())) {
             if (oDatosAlta instanceof DatosAltaAsegurados) {
                 final DatosAltaAsegurados oDatosAltaAsegurados = (DatosAltaAsegurados) oDatosAlta;
                 oDatosAltaAsegurados.setCodigoPromocional(null);
             }
             LOG.info(toMensaje(in, response.rawResponse));
 
-            resultado = simular(hmValores, oDatosAlta, lProductos, lBeneficiarios, frecuencia);
+            resultado = simular(oDatosPlan, oDatosAlta, lProductos, lBeneficiarios, frecuencia);
             resultado.setCodigoError(StaticVarsContratacion.SIMULACION_ERROR_COD_PROMOCIONAL);
             return resultado;
         } else {
-            System.err.println(toMensaje(in, response.rawResponse));
+            LOG.error(toMensaje(in, response.rawResponse));
             throw new ExcepcionContratacion(response.error.getDescripcion());
         }
 
         return resultado;
     }
 
+    /**
+     * Parsea el la respuesta y el objeto de entrada al servicio REST
+     * @param in entrada
+     * @param error respuesta en raw
+     * @return mensaje de entrada y salida
+     */
     private String toMensaje(final Simulacion in, final String error) {
         final StringBuilder sb = new StringBuilder();
         final ObjectMapper om = new ObjectMapper();
@@ -336,6 +333,7 @@ public class RealizarSimulacion implements IRealizarSimulacion {
         }
         return sb.toString();
     }
+
 
     private InfoPromociones obtenerInfoPromociones(final DatosAlta oDatosAlta) {
         InfoPromociones infoPromociones = null;
@@ -357,6 +355,8 @@ public class RealizarSimulacion implements IRealizarSimulacion {
         }
         return infoPromociones;
     }
+
+
 
     private InfoTier obtenerTier(final DatosAlta oDatosAlta) {
         InfoTier infoTier = null;
@@ -383,6 +383,7 @@ public class RealizarSimulacion implements IRealizarSimulacion {
         }
         return infoTier;
     }
+
 
     private InfoContratacion obtenerInfoContratacion(final DatosAlta oDatosAlta, final FrecuenciaEnum frecuencia, final Integer tipoOperacion) {
         final InfoContratacion infoContratacion = new InfoContratacion();
@@ -475,13 +476,7 @@ public class RealizarSimulacion implements IRealizarSimulacion {
             }
             beneficiario.setListaProductos(productos);
 
-            /*
-             * // Las procedencias pueden venir de tarjetas Sanitas List<String> tarjetas = ( (
-             * DatosAltaAsegurados )oDatosAlta ).getLNumTarjAsegurados(); if (tarjetas != null &&
-             * !tarjetas.isEmpty()){ String tarjeta = tarjetas.get( 0 ); obtenerProcedencia(tarjeta,
-             * oDatosAlta.getTitular().getDatosPersonales(), beneficiario); }else{
-             * beneficiario.setProcedencia( obtenerProcedencia(lProductos) ); }
-             */
+
             beneficiarios.add(beneficiario);
 
             // Y luego se procesan el resto de asegurados
@@ -656,6 +651,26 @@ public class RealizarSimulacion implements IRealizarSimulacion {
         return tieneTarjeta;
     }
 
+
+
+    /**
+     * Recupera las promociones aplicadas a la póliza.
+     *
+     * @param promociones      promociones aplicadas a cada asegurado.
+     * @param numeroAsegurados número asegurados de la póliza
+     * @return promociones aplicadas a la póliza.
+     */
+    private List<PromocionAplicada> recuperarPromocionesAgrupadas(final Promocion[] promociones,
+                                                                  final int numeroAsegurados) {
+
+        List<PromocionAplicada> promocionesAgrupadas = new ArrayList<>();
+        if (promociones != null && promociones.length > 0) {
+            final int numPromociones = promociones.length / numeroAsegurados;
+            promocionesAgrupadas = toPromocionAplicadaList(Arrays.copyOfRange(promociones, 0, numPromociones));
+        }
+        return promocionesAgrupadas;
+    }
+
     /**
      * Popula una lista de objetos PromocionAplicada con la información de las promociones
      * aplicadas.
@@ -674,24 +689,6 @@ public class RealizarSimulacion implements IRealizarSimulacion {
         }
 
         return promocionesParam;
-    }
-
-    /**
-     * Recupera las promociones aplicadas a la póliza.
-     *
-     * @param promociones      promociones aplicadas a cada asegurado.
-     * @param numeroAsegurados número asegurados de la póliza
-     * @return promociones aplicadas a la póliza.
-     */
-    private List<PromocionAplicada> recuperarPromocionesAgrupadas(final Promocion[] promociones,
-                                                                  final int numeroAsegurados) {
-
-        List<PromocionAplicada> promocionesAgrupadas = new ArrayList<>();
-        if (promociones != null && promociones.length > 0) {
-            final int numPromociones = promociones.length / numeroAsegurados;
-            promocionesAgrupadas = toPromocionAplicadaList(Arrays.copyOfRange(promociones, 0, numPromociones));
-        }
-        return promocionesAgrupadas;
     }
 
     /**
